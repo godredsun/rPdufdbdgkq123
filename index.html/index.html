@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>책 넘기기</title>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+            background: #111;
+        }
+        
+        .book {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            perspective: 2000px;
+        }
+        
+        .page {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: white;
+            display: flex;
+            transition: transform 0.8s;
+            transform-origin: left;
+            backface-visibility: hidden;
+        }
+        
+        .left,
+        .right {
+            width: 50%;
+            height: 100%;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+        
+        .left {
+            border-right: 2px solid #ccc;
+            overflow-y: auto;
+        }
+        
+        .right {
+            background: #f9f9f9;
+            overflow-y: auto;
+        }
+        
+        .content {
+            font-size: 16px;
+            line-height: 1.8;
+            text-align: left;
+        }
+        
+        .flipped {
+            transform: rotateY(-180deg);
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 25px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            z-index: 100;
+        }
+        
+        button {
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        #pageIndicator {
+            font-size: 20px;
+            font-weight: bold;
+            color: black;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            border-radius: 10px;
+        }
+
+        /* 타이머 표시 */
+        #timerDisplay {
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 6px 14px;
+            border-radius: 10px;
+            min-width: 110px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        
+        .option {
+            padding: 8px;
+            margin: 6px 0;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        .option:hover {
+            background: #eee;
+        }
+        
+        .selected {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .highlight {
+            background: gray;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        :root {
+            --highlight-color: yellow;
+            --page5-highlight: #ffff00;
+        }
+        
+        .highlight {
+            background: var(--highlight-color);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        textarea {
+            width: 100%;
+            font-size: 15px;
+            padding: 12px;
+            box-sizing: border-box;
+            resize: none;
+            border: 1px solid #bbb;
+            border-radius: 8px;
+            outline: none;
+            font-family: sans-serif;
+            line-height: 1.6;
+        }
+
+        .essay-block {
+            background: #fff;
+            border: 1.5px solid #d0d0d0;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+        }
+        .essay-block .essay-label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #888;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .essay-block .essay-q {
+            font-size: 15px;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .essay-block .key-quote {
+            background: #fff8e1;
+            border-left: 4px solid #f9a825;
+            padding: 7px 12px;
+            margin-bottom: 10px;
+            font-size: 13.5px;
+            color: #555;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+        }
+        .essay-block .key-words {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .essay-block .kw {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        
+        .fixed-highlight {
+            background: #fff176;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .underline {
+            text-decoration: underline;
+            text-decoration-thickness: 3px;
+            text-underline-offset: 4px;
+        }
+        
+        .page-img {
+            width: 90%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            border-radius: 5px;
+        }
+
+        .blue-highlight {
+            background: rgba(80, 170, 255, 0.45);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .page5-highlight {
+            background: var(--page5-highlight);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        #submitBtn {
+            background: rgba(100, 200, 100, 0.9);
+            font-weight: bold;
+        }
+
+        #submitBtn:hover {
+            background: rgba(100, 200, 100, 1);
+        }
+
+        /* 이전 버튼 비활성화 */
+        #prevBtn {
+            opacity: 0.35;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+
+        /* 경고 모달 */
+        #warnModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        #warnModal.show { display: flex; }
+
+        #warnBox {
+            background: #fff;
+            border-radius: 16px;
+            padding: 36px 40px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+        }
+        #warnBox .warn-icon { font-size: 48px; margin-bottom: 12px; }
+        #warnBox h2 { margin: 0 0 10px; font-size: 20px; color: #c0392b; }
+        #warnBox p  { margin: 0 0 24px; font-size: 15px; color: #444; line-height: 1.6; }
+        .warn-btns  { display: flex; gap: 12px; justify-content: center; }
+        .warn-btns button {
+            font-size: 15px;
+            padding: 10px 28px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #warnCancel { background: #eee; color: #333; }
+        #warnCancel:hover { background: #ddd; }
+        #warnConfirm { background: #e74c3c; color: #fff; }
+        #warnConfirm:hover { background: #c0392b; }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="book">
+
+        <!-- 1페이지 -->
+        <div class="page" data-page="1">
+            <div class="left">
+                <div class="content">
+                    '법 없이도 살 사람'들만 모여 살 수 있다면 좋겠지만 사회<br> 생활을 하는 우리가 법 없이 살기는 매우 어렵다. 여러 사람<br> 들이 모여 사는 곳에서는 크고 작은 분쟁이 끊임없이 발생<br> 할 수밖에 없으므로 이를 해결하기 위해서는 미리 강제적인<br> 규칙을 정해 놓아야 한다. 그래서 사회 구성원들의 합의에 의<br> 해 강제성을 갖도록 만들어진 것이 바로 '법'이다. 하지만 복<br> 잡한 현실의
+                    구체적인 상황을 모두 반영하여 법률을 만들려<br> 면 법은 무한정 길어질 수밖에 없다. 따라서 법은 추상적인<br> 규정으로 만들어진다. 그렇기 때문에 법을 현실의 구체적인<br> 사건에 적용하는 과정은 이른바 '법률적 삼단논법'에 의해<br> 이루어진다. '법률적 삼단논법'이란 추상적인 법 규정은 대전<br> 제로, 구체적인 사건은 소전제로 놓고, 법 규정이 그 사건에<br> 적용될 수 있는지 판단하여 결론을
+                    이끌어내는 것을 말한다.<br> 예컨대 A의 노트북 컴퓨터를 B가 몰래 가져가서 사용하다<br> 발각되어 A가 B를 검찰에 고소했다고 하자. <span class="underline">㉠검사는</span> 이 사<br> 건이 어떤 법 규정에 해당되는지 검토한 후, 법정에서 B<br> 의 행위가 절도죄를 규정한 형법 규정에 해당되므로 형벌을<br> 받아야 한다고 주장한다. 이에 대해 <span class="underline">㉡B의 변호사는</span> B가 노<br> 트북 컴퓨터를 훔쳐 간 것이 아니라 잠시 빌려 쓰려고 했던<br> 것이므로, 검사가 내세운 형법 규정에 해당되지 않는다고 검<br> 사와는 다른 주장을 한다. 그러면 법관은 양쪽의 주장을 참고<br> 하여 B의 행위가 과연 검사가 내세운 형법 규정에 해당되는<br> 지를 최종적으로 판단한다. 만약 해당된다고 판단되면 법관은<br> 그에 맞는 결론, 즉 유죄 판결을 내린다. 이와 같이 검사, 변<br> 호사, 법관은 모두 '어떤 사건이 어느 법 규정에 해당되는지'<br> 를 다룬다.<br> 그런데, 많은 훈련을 거친 법률가들이라 하더라도 어떤 사<br> 건에 적용할 수 있는 적당한 법 규정을 찾아내는 일은 결코<br> 쉬운 일이 아니다. 적당한 법 규정 찾기가 어려운 이유는 현<br> 재 시행되고 있는 법 규정의 수가 엄청나게 많을 뿐 아니라,<br> 기존의 법 규정도 수시로 개정되고, 새로운 법 규정도 계속<br> 만들어지고 있기 때문이다. 그뿐만 아니라 어떤 사건에 적용<br> 될 가능성이 있는 법 규정이 여러 개 발견되는 경우도 있다.<br> 이로 인해 어떤 사건이 발생하였을 때 그 사건에 적용할 수<br> 있는 적당한 법 규정을 찾지 못하게 되는 경우도 생긴다.<br> 만일 이와 같이 어떤 사건에 적용할 수 있는 적당한 법 규<br> 정을 찾지 못하게 되면 어떻게 될까? 이 경우에 형사재판*과<br> 민사재판*은 서로
+                    다른 결론을 내리게 된다. 국가와 국민이라<br> 는 관계를 기반으로 하는 형법에서는, 법률에 미리 범죄와 형<br> 벌이 규정되지 않은 경우에는 벌할 수 없다는 <span class="underline">죄형법정주의</span><br> 원리가 엄격하게 적용된다. 따라서 형사재판에서는 어떠한 사<br> 건에 적용할 수 있는 적당한 법 규정이 발견되지 않으면 법<br> 관은 법 규정의 적용을 포기하고 피고인에게
+                    무죄를 선고해<br> 야 한다. 물론 피고인의 행위가 도덕적으로는 비난의 대상이<br> 될 수도 있지만, 함부로 다른 형법 규정을 가져다 적용을 하<br> 면 안 된다는 것이 형법의 대원칙이다.<br> 반면, 기본적으로 대등한 두 당사자를 대상으로 하는 민<br> 사재판에서는 법 규정이 없다고 해서 그 판결을 포기하는 것<br> 이 아니라, 최대한 그 사건과 관련된 일반 원칙을 찾아내서<br> 손해와 이익을 공평하게
+                    조정하려고 노력한다. 즉, 법 규<br> 정 찾기에 실패해도 관습법이나 건전한 상식을 기준으로 판<br> 결을 내리는 것이다. 따라서 형사재판에서 무죄를 선고받은<br> 자라 하더라도, 어떤 사람에게 손해를 입힌 사실이 분명하다<br> 면 민사재판에서는 피해자의 손해에 대해 배상을 하라고 판<br> 결할 수 있는 것이다.<br> * 형사재판 : 형법의 적용을 받는 사건을 다루는 재판.<br> * 민사재판 : 개인
+                    사이의 경제적·신분적 생활 관계에 관한 사건을<br> 다루는 재판.<br>
+                </div>
+            </div>
+
+            <div class="right">
+                <div class="content">
+                    <div class="question" data-question="1-1">
+                        <b>문제 1.</b> 위 글을 읽고 알게 된 내용으로 적절하지 않은 것은?<br>
+                        <div class="option" data-answer="1">① 형법은 국가와 국민의 관계를 기반으로 형성된 법이다.</div>
+                        <div class="option" data-answer="2">② 동일한 사건에 적용시킬 수 있는 법 규정이 여러 개 있을 수도 있다.</div>
+                        <div class="option" data-answer="3">③ 많은 훈련을 거친 법률가들도 때로는 법 규정 찾기에 어려움을 느낀다.</div>
+                        <div class="option" data-answer="4">④ 민사재판에서는 관습법이나 건전한 상식도 판결의 기준으로 삼을 수 있다.</div>
+                        <div class="option" data-answer="5">⑤ 형사재판에서는 적당한 법 규정이 없으면 법 규정이 만들어질 때까지 판결을 미룬다.</div>
+                    </div>
+                    <br>
+                    <div class="question" data-question="1-2">
+                        <b>문제 2.</b> ㉠과 ㉡이 서로 다른 주장을 하게 된 이유로 가장 적절한 것은?<br>
+                        <div class="option" data-answer="1">① ㉠만 법률적 삼단논법을 사용하였기 때문이다.</div>
+                        <div class="option" data-answer="2">② ㉡만 법률적 삼단논법을 사용하였기 때문이다.</div>
+                        <div class="option" data-answer="3">③ ㉠과 ㉡이 대전제를 서로 다르게 보았기 때문이다.</div>
+                        <div class="option" data-answer="4">④ ㉠과 ㉡이 소전제를 서로 다르게 보았기 때문이다.</div>
+                        <div class="option" data-answer="5">⑤ ㉠이 자신이 세운 대전제를 사건에 적용하지 못했기 때문이다.</div>
+                    </div>
+                    <br>
+                    <div class="question" data-question="1-3">
+                        <b>문제 3.</b> 위 글로 보아 죄형법정주의에 담긴 정신으로 가장 적절한 것은?<br>
+                        <div class="option" data-answer="1">① 법 없이는 범죄도 없고 형벌도 없다.</div>
+                        <div class="option" data-answer="2">② 명백한 범죄행위는 증명할 필요조차 없다.</div>
+                        <div class="option" data-answer="3">③ 법을 적용할 때는 개인의 상황을 고려해야 한다.</div>
+                        <div class="option" data-answer="4">④ 법에서는 개인의 이익보다 집단의 이익이 우선이다.</div>
+                        <div class="option" data-answer="5">⑤ 누구든지 타인의 행위 결과에 대해서는 책임이 없다.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2페이지 -->
+        <div class="page" data-page="2">
+            <div class="left">
+                <div class="content">
+                    '법 없이도 살 사람'들만 모여 살 수 있다면 좋겠지만 사회<br> 생활을 하는 우리가 법 없이 살기는 매우 어렵다. 여러 사람<br> 들이 모여 사는 곳에서는 크고 작은 분쟁이 끊임없이 발생<br> 할 수밖에 없으므로 이를 해결하기 위해서는 미리 강제적인<br> 규칙을 정해 놓아야 한다. 그래서 사회 구성원들의 합의에 의<br> 해 강제성을 갖도록 만들어진 것이 바로 '법'이다. 하지만 복<br> 잡한 현실의
+                    구체적인 상황을 모두 반영하여 법률을 만들려<br> 면 법은 무한정 길어질 수밖에 없다. 따라서 법은 추상적인<br> 규정으로 만들어진다. 그렇기 때문에 법을 현실의 구체적인<br> 사건에 적용하는 과정은 이른바 '법률적 삼단논법'에 의해<br> 이루어진다. '법률적 삼단논법'이란 추상적인 법 규정은 대전<br> 제로, 구체적인 사건은 소전제로 놓고, 법 규정이 그 사건에<br> 적용될 수 있는지 판단하여 결론을
+                    이끌어내는 것을 말한다.<br> 예컨대 A의 노트북 컴퓨터를 B가 몰래 가져가서 사용하다<br> 발각되어 A가 B를 검찰에 고소했다고 하자. <span class="underline">㉠검사는</span> 이 사<br> 건이 어떤 법 규정에 해당되는지 검토한 후, 법정에서 B<br> 의 행위가 절도죄를 규정한 형법 규정에 해당되므로 형벌을<br> 받아야 한다고 주장한다. 이에 대해 <span class="underline">㉡B의 변호사는</span> B가 노<br> 트북 컴퓨터를 훔쳐 간 것이 아니라 잠시 빌려 쓰려고 했던<br> 것이므로, 검사가 내세운 형법 규정에 해당되지 않는다고 검<br> 사와는 다른 주장을 한다. 그러면 법관은 양쪽의 주장을 참고<br> 하여 B의 행위가 과연 검사가 내세운 형법 규정에 해당되는<br> 지를 최종적으로 판단한다. 만약 해당된다고 판단되면 법관은<br> 그에 맞는 결론, 즉 유죄 판결을 내린다. 이와 같이 검사, 변<br> 호사, 법관은 모두 '어떤 사건이 어느 법 규정에 해당되는지'<br> 를 다룬다.<br> 그런데, 많은 훈련을 거친 법률가들이라 하더라도 어떤 사<br> 건에 적용할 수 있는 적당한 법 규정을 찾아내는 일은 결코<br> 쉬운 일이 아니다. 적당한 법 규정 찾기가 어려운 이유는 현<br> 재 시행되고 있는 법 규정의 수가 엄청나게 많을 뿐 아니라,<br> 기존의 법 규정도 수시로 개정되고, 새로운 법 규정도 계속<br> 만들어지고 있기 때문이다. 그뿐만 아니라 어떤 사건에 적용<br> 될 가능성이 있는 법 규정이 여러 개 발견되는 경우도 있다.<br> 이로 인해 어떤 사건이 발생하였을 때 그 사건에 적용할 수<br> 있는 적당한 법 규정을 찾지 못하게 되는 경우도 생긴다.<br> 만일 이와 같이 어떤 사건에 적용할 수 있는 적당한 법 규<br> 정을 찾지 못하게 되면 어떻게 될까? 이 경우에 형사재판*과<br> 민사재판*은 서로
+                    다른 결론을 내리게 된다. 국가와 국민이라<br> 는 관계를 기반으로 하는 형법에서는, 법률에 미리 범죄와 형<br> 벌이 규정되지 않은 경우에는 벌할 수 없다는 <span class="underline">죄형법정주의</span><br> 원리가 엄격하게 적용된다. 따라서 형사재판에서는 어떠한 사<br> 건에 적용할 수 있는 적당한 법 규정이 발견되지 않으면 법<br> 관은 법 규정의 적용을 포기하고 피고인에게
+                    무죄를 선고해<br> 야 한다. 물론 피고인의 행위가 도덕적으로는 비난의 대상이<br> 될 수도 있지만, 함부로 다른 형법 규정을 가져다 적용을 하<br> 면 안 된다는 것이 형법의 대원칙이다.<br> 반면, 기본적으로 대등한 두 당사자를 대상으로 하는 민<br> 사재판에서는 법 규정이 없다고 해서 그 판결을 포기하는 것<br> 이 아니라, 최대한 그 사건과 관련된 일반 원칙을 찾아내서<br> 손해와 이익을 공평하게
+                    조정하려고 노력한다. 즉, 법 규<br> 정 찾기에 실패해도 관습법이나 건전한 상식을 기준으로 판<br> 결을 내리는 것이다. 따라서 형사재판에서 무죄를 선고받은<br> 자라 하더라도, 어떤 사람에게 손해를 입힌 사실이 분명하다<br> 면 민사재판에서는 피해자의 손해에 대해 배상을 하라고 판<br> 결할 수 있는 것이다.<br> * 형사재판 : 형법의 적용을 받는 사건을 다루는 재판.<br> * 민사재판 : 개인
+                    사이의 경제적·신분적 생활 관계에 관한 사건을<br> 다루는 재판.<br>
+                </div>
+            </div>
+
+            <div class="right">
+                <div class="content">
+
+                    <!-- 서술형 1: 내용 요약 -->
+                    <div class="essay-block question" data-question="2-essay">
+                        <div class="essay-label">📝 서술형 1</div>
+                        <div class="essay-q">이 지문을 읽고 내용을 요약하시오. (5줄 이내)</div>
+                        <textarea rows="5" placeholder="답을 작성하세요" data-essay="2"></textarea>
+                    </div>
+
+                    <!-- 서술형 2: 중요 문장 2개 -->
+                    <div class="essay-block question" data-question="2-sent">
+                        <div class="essay-label">✏️ 서술형 2 — 중요 문장 쓰기</div>
+                        <div class="essay-q">중요하다고 생각되는 주요문장을 지문에서 찾아 쓰시오. (최소 2개)</div>
+                        <textarea rows="5" placeholder="주요문장을 쓰시오" data-essay="2-sent"></textarea>
+                    </div>
+
+                    <!-- 서술형 3: 핵심 단어 -->
+                    <div class="essay-block question" data-question="2-word">
+                        <div class="essay-label">🔑 서술형 3 — 핵심 단어 설명</div>
+                        <div class="essay-q">중요하다고 생각되는 단어를 쓰시오.(최소 4개)</div>
+                        <textarea rows="6" placeholder="주요단어를 쓰시오" data-essay="2-word"></textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 3페이지 -->
+        <div class="page" data-page="3">
+            <div class="left">
+                <div class="content">
+                    법률은 사회에서 발생하는 모든 법적 문제에 대한 해결 기<br> 준을 정하려고 한다. 하지만 다양한 사례를 모두 법률에 망라<br> 할 수는 없기에, 법조문은 그것들을 포괄할 수 있는 추상적인<br> 용어로 구성될 수밖에 없다. 따라서 이러한 법률의 조항들이<br> 실제 사안에 적용되려면 <span class="blue-highlight">해석이라는 과정</span>을 거쳐야 한다.<br> 법조문도 언어로 이루어진 것이기에,
+                    원칙적으로 문구가 지<br> 닌 보편적인 의미에 맞춰 해석된다. 일상의 사례로 생각해 보<br> 자. "실내에 구두를 신고 들어가지 마시오."라는 팻말이 있는<br> 집에서는 손님들이 당연히 글자 그대로 구두를 신고 실내에<br> 들어가지 않는다. 그런데 팻말에 명시되지 않은 '실외'에서 구<br> 두를 신고 돌아다니는 것은 어떨까? 이에 대해서는 금지의<br> 문구로 제한하지 않았기 때문에, 금지의 효력을 부여하지 않
+                    <br> 겠다는 의미로 당연하게 받아들인다. 이처럼 문구에서 명시하<br> 지 않은 상황에 대해서는 그 효력을 부여하지 않는다고 해석<br> 하는 방식을 <span class="blue-highlight">반대 해석</span>이라 한다.<br> 그런데 팻말에는 운동화나 슬리퍼에 대하여도 쓰여 있지<br> 않다. 하지만 누군가 운동화를 신고 마루로 올라가려 하면,<br> 집주인은 팻말을 가리키며 말릴 것이다. 이 경우에
+                    '구두'라는
+                    <br> 낱말은 본래 가진 뜻을 넘어 일반적인 신발이라는 의미로 확<br> 대된다. 이런 식으로 어떤 표현을 본래의 의미보다 넓혀 이해<br> 하는 것을 <span class="blue-highlight">확장 해석</span>이라 한다.<br> 하지만 팻말을 비웃으며 진흙이 잔뜩 묻은 맨발로 들어가<br> 는 사람을 말리려면, '구두'라는 낱말을 확장 해석하는 것으로<br> 는 어렵다. 위의 팻말이 주로 실내를 깨끗이
+                    유지하기 위하여<br> 마련된 규정이라면, 마루를 더럽히며 올라가는 행위도 마찬가<br> 지로 금지된다고 보아야 할 것이다. 이렇게 해석하는 방식이<br>
+                    <span class="blue-highlight">유추 해석</span>이다.<br> 규정된 행위와 동등하다고 평가될 수 있는 일<br> 에는 규정이 없어도 같은 효력이 주어져야 한다는 논리이다.<br> 그런데 구두를 신고 마당을 걷는 것은 괜찮다고 반대 해석<br> 하면서도, 흙 묻은 맨발로 방에 들어가도 된다는 반대 해석은<br> 왜 받아들이기 어려운가? 이것은 보편적인 상식이나 팻말을<br> 걸게 된 동기 등을
+                    고려하며 판단하기 때문일 것이다. <span class="blue-highlight">법률의 해석</span><br> 에서도 마찬가지로 그 법률의 목적, 기능, 입법 배경 등<br> 을 고려한다. 한 예로 형벌권의 남용으로부터 국민의 자유와<br> 권리를 보호하려는 죄형법정주의라는 헌법상의 요청 때문에,<br> 형법의 조문들에서는 <span class="blue-highlight">유추 해석</span>이 엄격히 배제된다.<br>
+                </div>
+            </div>
+
+            <div class="right">
+                <div class="content">
+                    <div class="question" data-question="3-1">
+                        <b>문제 1.</b> 위 글의 서술상 특징에 대한 설명으로 가장 적절한 것은?<br>
+                        <div class="option" data-answer="1">① 하나의 사례를 매개로 하여 여러 가지 개념들이 비교될 수 있도록 구성하였다.</div>
+                        <div class="option" data-answer="2">② 이론적으로 설정한 가설에 대해 현실적 사례를 들어가며 논증하였다.</div>
+                        <div class="option" data-answer="3">③ 문제를 상정하고 그와 유사한 상황들을 분석하여 대안을 모색하였다.</div>
+                        <div class="option" data-answer="4">④ 단계적 추론을 통해 타당한 해결책에 이르도록 논의를 전개 하였다.</div>
+                        <div class="option" data-answer="5">⑤ 다양한 원리를 제시하고 평가하여 종합적 결론을 도출하였다.</div>
+                    </div><br>
+
+                    <div class="question" data-question="3-2">
+                        <b>문제 2.</b> 위 글에서 설명된 법률 해석에 대한 이해로 옳지 않은 것은?<br>
+                        <div class="option" data-answer="1">① 법률은 해석을 통해 구체적 사안에 적용된다.</div>
+                        <div class="option" data-answer="2">② 죄형법정주의 때문에 형법에서는 유추 해석을 금지한다.</div>
+                        <div class="option" data-answer="3">③ 법률이 갖는 목적이나 성격은 그 법조문의 해석에 영향을끼친다.</div>
+                        <div class="option" data-answer="4">④ 중앙 처리 장치(CPU)</div>
+                    </div><br>
+
+                    <div class="question" data-question="3-3">
+                        <b>문제 3.</b> 다음 중 반대 해석의 사례로 가장 적절한 것은?<br>
+                        <div class="option" data-answer="1">① '구두'라는 표현을 운동화까지 포함하는 것으로 이해한다.</div>
+                        <div class="option" data-answer="2">② '구두'라는 표현을 맨발까지 포함하는 것으로 이해한다.</div>
+                        <div class="option" data-answer="3">③ 팻말에 없는 신발은 모두 금지된다고 본다.</div>
+                        <div class="option" data-answer="4">④ 팻말에 명시되지 않은 마당에서는 구두 착용이 가능하다고 본다.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4페이지 -->
+        <div class="page" data-page="4">
+            <div class="left">
+                <div class="content">
+                    법률은 사회에서 발생하는 모든 법적 문제에 대한 해결 기<br> 준을 정하려고 한다. 하지만 다양한 사례를 모두 법률에 망라<br> 할 수는 없기에, 법조문은 그것들을 포괄할 수 있는 추상적인<br> 용어로 구성될 수밖에 없다. 따라서 이러한 법률의 조항들이<br> 실제 사안에 적용되려면 해석이라는 과정을 거쳐야 한다.<br> 법조문도 언어로 이루어진 것이기에, 원칙적으로 문구가 지<br> 닌 보편적인 의미에
+                    맞춰 해석된다. 일상의 사례로 생각해 보<br> 자. "실내에 구두를 신고 들어가지 마시오."라는 팻말이 있는<br> 집에서는 손님들이 당연히 글자 그대로 구두를 신고 실내에<br> 들어가지 않는다. 그런데 팻말에 명시되지 않은 '실외'에서 구<br> 두를 신고 돌아다니는 것은 어떨까? 이에 대해서는 금지의<br> 문구로 제한하지 않았기 때문에, 금지의 효력을 부여하지 않<br> 겠다는 의미로 당연하게 받아들인다.
+                    이처럼 문구에서 명시하<br> 지 않은 상황에 대해서는 그 효력을 부여하지 않는다고 해석<br> 하는 방식을 반대 해석이라 한다.<br> 그런데 팻말에는 운동화나 슬리퍼에 대하여도 쓰여 있지<br> 않다. 하지만 누군가 운동화를 신고 마루로 올라가려 하면,<br> 집주인은 팻말을 가리키며 말릴 것이다. 이 경우에 '구두'라는<br> 낱말은 본래 가진 뜻을 넘어 일반적인 신발이라는 의미로 확<br> 대된다. 이런
+                    식으로 어떤 표현을 본래의 의미보다 넓혀 이해<br> 하는 것을 확장 해석이라 한다.<br> 하지만 팻말을 비웃으며 진흙이 잔뜩 묻은 맨발로 들어가<br> 는 사람을 말리려면, '구두'라는 낱말을 확장 해석하는 것으로<br> 는 어렵다. 위의 팻말이 주로 실내를 깨끗이 유지하기 위하여<br> 마련된 규정이라면, 마루를 더럽히며 올라가는 행위도 마찬가<br> 지로 금지된다고 보아야 할 것이다. 이렇게 해석하는 방식이<br> 유추 해석이다. 규정된 행위와 동등하다고 평가될 수 있는 일<br> 에는 규정이 없어도 같은 효력이 주어져야 한다는 논리이다.<br> 그런데 구두를 신고 마당을 걷는 것은 괜찮다고 반대 해석<br> 하면서도, 흙 묻은 맨발로 방에 들어가도 된다는 반대 해석은<br> 왜 받아들이기 어려운가? 이것은 보편적인 상식이나 팻말을<br> 걸게 된 동기 등을 고려하며 판단하기 때문일 것이다. 법률의<br> 해석에서도 마찬가지로
+                    그 법률의 목적, 기능, 입법 배경 등<br> 을 고려한다. 한 예로 형벌권의 남용으로부터 국민의 자유와<br> 권리를 보호하려는 죄형법정주의라는 헌법상의 요청 때문에,<br> 형법의 조문들에서는 유추 해석이 엄격히 배제된다.<br>
+                </div>
+            </div>
+            <div class="right">
+                <div class="content">
+
+                    <!-- 서술형 1: 내용 요약 -->
+                    <div class="essay-block question" data-question="4-essay">
+                        <div class="essay-label">📝 서술형 1</div>
+                        <div class="essay-q">이 지문을 읽고 내용을 요약하시오. (5줄 이내)</div>
+                        <textarea rows="5" placeholder="답을 작성하세요" data-essay="4"></textarea>
+                    </div>
+
+                    <!-- 서술형 2: 중요 문장 2개 -->
+                    <div class="essay-block question" data-question="2-sent">
+                        <div class="essay-label">✏️ 서술형 2 — 중요 문장 쓰기</div>
+                        <div class="essay-q">중요하다고 생각되는 주요문장을 지문에서 찾아 쓰시오. (최소 2개)</div>
+                        <textarea rows="5" placeholder="주요문장을 쓰시오" data-essay="2-sent"></textarea>
+                    </div>
+
+                    <!-- 서술형 3: 핵심 단어 -->
+                    <div class="essay-block question" data-question="2-word">
+                        <div class="essay-label">🔑 서술형 3 — 핵심 단어 설명</div>
+                        <div class="essay-q">중요하다고 생각되는 단어를 쓰시오.(최소 4개)</div>
+                        <textarea rows="6" placeholder="주요단어를 쓰시오" data-essay="2-word"></textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 5페이지 -->
+        <div class="page" data-page="5">
+            <div class="left">
+                <div class="content">
+                    일반적이고 추상적인 형태의 법을 개별 사례에 적용하려<br> 한다면 이른바 해석을 통해 법의 의미 내용을 구체화하는 작<br> 업이 필요하다. 어떤 새로운 사례가 특정한 법의 규율을 받는<br> 지 판단하기 위해서는 선례들, 즉 이미 의심의 여지없이 그<br> 법의 규율을 받는 것으로 인정된 사례들과 비교해 볼 필요가<br> 있는데, 그러한 비교 사례들을 제공할 뿐 아니라 구체적으로<br> 어떤 <span class="page5-highlight">비교 관점</span>이
+                    중요한지를<br> 결정하는 것도 바로 <span class="page5-highlight">해석</span>의 몫이다.<br>
+                    <br> 넓은 의미에서는 법이 명료한 개념들로 쓰인 경우에 벌어<br> 지는 가장 단순한 법의 적용조차도 <span class="page5-highlight">해석의 결과</span>라 할 수 있<br> 지만, 일반적으로 문제 되는 것은 법이 불확정적인 개념이나<br> 근본적으로 규범적인 개념, 혹은 재량적 판단을 허용하는 개<br> 념 등을 포함하고 있어 그것의 적용이 법문의 가능한 의미<br> 범위 내에서 이루어지고
+                    있는지 <span class="page5-highlight">해석</span>여부가 다투어질 경우이다.<br> 그러한 범위 내에서 이루어지는 해석적 시도는 당연히 허용<br> 되지만, 그것을 넘어선 시도에 대해서는 과연 그 같은 시도가<br> 정당화될 수 있는지를 따로 살펴봐야 한다.<br> 하지만 <span class="page5-highlight">언어가 가지는 의미는 고정되어 있는 것이 아니기</span><br>때문에, 애초에
+                    법문의 가능한 의미 범위라는 것은 존재하지<br> 않는다고 볼 수도 있다. 따라서 그것을 기준선으로 삼아, 당<br> 연히 허용되는 <span class="page5-highlight">'법의 발견'과 별도의 정당화를 요하는 이른바</span><br> <span class="page5-highlight">'법의 형성'</span>을 구분 짓는 태도 또한 논란으로부터 자유롭다고<br> 말할 수는 없다. 더욱이 가장 단순한 것에서 매우 논쟁적인<br> 것까지 모든 법의 적용이 <span class="page5-highlight">해석적 시도</span>의 결과라는 공통점을<br> 지니고 있는 한, 기준선의 어느 쪽에서 이루어지는 것이든 법<br> 의 의미 내용을 구체화하려는
+                    활동의 본질에는 차이가 없을<br> 것이다.
+                    <br> 예컨대 법의 발견과 형성 과정에서 동일하게 법의 <span class="page5-highlight">축소와</span><br> <span class="page5-highlight">확장</span>을 두고 고민하게 된다. 이를 통해서 특정 사례에 그 법<br> 의 손길이 미치는지 여부가 결정될 것이기 때문이다. 다만 그<br> 것이 법문의 가능한 의미 범위 내에서 이루어지는 경우와, 법<br> 의 흠결을 보충하기 위해 불가피하게 그 범위를 넘어서는 경<br> 우의 구분에 좀 더 주목하는 견해가 있을 뿐이다. 이렇게 보<br> 면
+                    결국 법의 적용을 위한 해석적 시도란 법문의 가능한 의<br> 미 범위 안팎에서 법을 줄이거나 늘림으로써 그것이 특정 사<br> 례를 규율하는지 여부를 정하려는 것이라 할 수 있다.<br> 흥미로운 점은 ㉠ <span class="page5-highlight">법의 축소와 확장이라는 개념마저 그다지</span><br> <span class="page5-highlight">분명한 것이 아니라는</span>라는 데 있다. 특히 형벌 법규와 관련해서는<br> 가벌성의 범위가 줄어들거나 늘어나는 것을 가리킬 경우가<br> 있는가 하면, 법규의 적용 범위가
+                    좁아지거나 넓어지는 것을<br> 지칭할 경우도 있다. 혹은 법문의 의미와 관련하여 언어적으<br> 로 매우 엄격하게 새기는 것을 축소로 보는가 하면, 명시되지<br> 않는 요건을 덧붙이게 되는 탓에 확장이라 일컫기도 한다. 한<br> 편 이른바 법의 실질적 의미에 비추어 시민적 자유와 권리에<br> 제약을 가하거나 법적인 원칙에 예외를 두는 것을 축소로 표<br> 현하기도 하며, 학설에 따라서는 입법자의 의사나
+                    법 그 자체<br> 의 목적과 비교함으로써 축소와 확장을 판정하기도 한다.<br> 가령 법은 단순히 '자수를 하면 형을 면제한다'라고만 정하<br> 고 있는데, 이를 '범행이 발각된 후에 수사기관에 자진 출두<br> 하는 것은 자수에 해당하지 않는다'라고 새기는 경우를 생각<br> 해 보자. 그러한 <span class="page5-highlight">해석적 시도는 가벌성을 넓힌다는 점에서는</span><br> <span class="page5-highlight">확장이지만, 법규의 적용 범위를 좁힌다는 점에서는 축소에</span><br><span class="underline">해당한다.</span>
+                    한편 자수의 일차적이고도 엄격한 의미는 '범행 발<br> 각 전'의 그것만을 뜻한다고 할 수 있다면, 그와 같은 측면에<br> 서는 법문의 의미를 축소하는 것이지만, 형의 면제 요건으로<br> 단순히 자수 이외에 '범행 발각 전'이라고 하는 명시되지 않은<br> 요소를 추가하여 법문의 의미를 파악하고 있는 점에서는 확<br> 장이다. 나아가 형의 면제 기회가 줄어드는 만큼 시민적 자유<br> 의 제약을
+                    초래한다는 점에서는 축소이지만, 자수를 통한 형<br> 의 면제가 어디까지나 자신의 행위 결과에 대하여 책임을 져<br> 야 한다는 대원칙의 예외에 불과하다면, 그와 같은 예외의 폭<br> 을 줄이고 원칙으로 수렴한다는 점에서는 확장이라 말할 수<br> 있다.
+                    <br> 이렇듯 법의 해석과 적용을 인도하는 주요 개념들, 즉 법문<br> 의 가능한 의미 범위 및 그 안팎에서 시도되는 <span class="page5-highlight">법의 축소와</span><br> <span class="page5-highlight">확장은 대체로 정체가 불분명할</span>할 뿐 아니라 그 존재론적 기초<br> 를 의심받기도 하지만, 여전히 많은 학설과 판례가 이들의 도<br> 구적 가치를 긍정하고 있다. 그것은 규범적 정당성과 실천적<br> 유용성을 함께 추구하는 법의 논리가 법적 사고의 과정 자체<br> 에 남긴
+                    유산인 것이다.<br>
+                </div>
+            </div>
+            <div class="right">
+                <div class="content">
+                    <div class="question" data-question="5-1">
+                        <b>문제 1.</b> <span class="underline">해석</span>에 관한 윗글의 입장과 일치하는 것은?<br>
+                        <div class="option" data-answer="1">① 법의 발견과 법의 형성 사이에 본질적인 차이는 없다.</div>
+                        <div class="option" data-answer="2">② 법의 해석은 법의 흠결을 보충하는 활동에서 비롯된다.</div>
+                        <div class="option" data-answer="3">③ 법문의 가능한 의미 범위를 넘어선 해석적 시도는 정당화 될 수 없다.</div>
+                        <div class="option" data-answer="4">④ 법문이 명료한 개념들로만 쓰이는 경우라면 해석이 개입할 여지가 없다.</div>
+                        <div class="option" data-answer="5">⑤ 법이 재량적 판단을 허용하는 개념을 도입함으로써 해석적 논란을 차단할 수 있다.</div>
+                    </div><br>
+
+                    <div class="question" data-question="5-2">
+                        <b>문제 2.</b> 윗글에 대한 이해로 가장 적절한 것은?<br>
+                        <div class="option" data-answer="1">① 법의 해석은 법조문이 불명확한 경우에만 이루어지며, 명확한 법조문은 해석이 필요 없다.</div>
+                        <div class="option" data-answer="2">② 법문의 가능한 의미 범위는 항상 명확하므로 법의 발견과 법의 형성은 쉽게 구별된다.</div>
+                        <div class="option" data-answer="3">③ 법의 축소와 확장은 적용 맥락에 따라 의미가 달라질 수 있으며, 단일한 기준으로 규정되기 어렵다.</div>
+                        <div class="option" data-answer="4">④ 법의 적용은 법문에 기계적으로 사례를 대입하는 것이므로 해석은 부수적 절차에 불과하다.</div>
+                        <div class="option" data-answer="5">⑤ 법의 형성은 법문의 가능한 의미 범위 안에서만 이루어지며 별도의 정당화는 필요하지 않다.</div>
+                    </div><br>
+
+                    <div class="question" data-question="5-3">
+                        <b>문제 3.</b> 윗글을 바탕으로 볼 때, '자수를 하면 형을 면제한다'라는 규정을 '범행 발각 후 수사기관에<br> 자진 출두한 경우는 자수에 해당하지 않는다'라고 해석한 것에 대한 설명으로 가장 적절한 것은?<br>
+                        <div class="option" data-answer="1">① 모든 관점에서 법의 확장으로만 이해되며 축소로 볼 여지는 없다.</div>
+                        <div class="option" data-answer="2">② 법문의 의미를 명확히 한 것이므로 해석이 아니라 단순한 법 적용에 해당한다.</div>
+                        <div class="option" data-answer="3">③ 가벌성의 범위를 줄이므로 법의 축소로만 판단된다.</div>
+                        <div class="option" data-answer="4">④ 어떤 기준을 택하느냐에 따라 축소와 확장으로 모두 해석될 수 있다.</div>
+                        <div class="option" data-answer="5">⑤ 법문의 가능한 의미 범위를 넘는 해석이므로 반드시 부당하다.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6페이지 -->
+        <div class="page" data-page="6">
+            <div class="left">
+                <div class="content">
+                    일반적이고 추상적인 형태의 법을 개별 사례에 적용하려<br> 한다면 이른바 해석을 통해 법의 의미 내용을 구체화하는 작<br> 업이 필요하다. 어떤 새로운 사례가 특정한 법의 규율을 받는<br> 지 판단하기 위해서는 선례들, 즉 이미 의심의 여지없이 그<br> 법의 규율을 받는 것으로 인정된 사례들과 비교해 볼 필요가<br> 있는데, 그러한 비교 사례들을 제공할 뿐 아니라 구체적으로<br> 어떤 비교 관점이 중요한지를
+                    결정하는 것도 바로 <span class="underline">해석</span>의<br> 몫이다.
+                    <br> 넓은 의미에서는 법이 명료한 개념들로 쓰인 경우에 벌어<br> 지는 가장 단순한 법의 적용조차도 해석의 결과라 할 수 있<br> 지만, 일반적으로 문제 되는 것은 법이 불확정적인 개념이나<br> 근본적으로 규범적인 개념, 혹은 재량적 판단을 허용하는 개<br> 념 등을 포함하고 있어 그것의 적용이 법문의 가능한 의미<br> 범위 내에서 이루어지고 있는지 여부가 다투어질 경우이다.<br> 그러한 범위 내에서
+                    이루어지는 해석적 시도는 당연히 허용<br> 되지만, 그것을 넘어선 시도에 대해서는 과연 그 같은 시도가<br> 정당화될 수 있는지를 따로 살펴봐야 한다.<br> 하지만 언어가 가지는 의미는 고정되어 있는 것이 아니기<br> 때문에, 애초에 법문의 가능한 의미 범위라는 것은 존재하지<br> 않는다고 볼 수도 있다. 따라서 그것을 기준선으로 삼아, 당<br> 연히 허용되는 '법의 발견'과 별도의 정당화를 요하는
+                    이른바<br> '법의 형성'을 구분 짓는 태도 또한 논란으로부터 자유롭다고<br> 말할 수는 없다. 더욱이 가장 단순한 것에서 매우 논쟁적인<br> 것까지 모든 법의 적용이 해석적 시도의 결과라는 공통점을<br> 지니고 있는 한, 기준선의 어느 쪽에서 이루어지는 것이든 법<br> 의 의미 내용을 구체화하려는 활동의 본질에는 차이가 없을<br> 것이다.
+                    <br> 예컨대 법의 발견과 형성 과정에서 동일하게 법의 축소와<br> 확장을 두고 고민하게 된다. 이를 통해서 특정 사례에 그 법<br> 의 손길이 미치는지 여부가 결정될 것이기 때문이다. 다만 그<br> 것이 법문의 가능한 의미 범위 내에서 이루어지는 경우와, 법<br> 의 흠결을 보충하기 위해 불가피하게 그 범위를 넘어서는 경<br> 우의 구분에 좀 더 주목하는 견해가 있을 뿐이다. 이렇게 보<br> 면
+                    결국 법의 적용을 위한 해석적 시도란 법문의 가능한 의<br> 미 범위 안팎에서 법을 줄이거나 늘림으로써 그것이 특정 사<br> 례를 규율하는지 여부를 정하려는 것이라 할 수 있다.<br> 흥미로운 점은 ㉠ 법의 축소와 확장이라는 개념마저 그다지<br> 분명한 것이 아니라는 데 있다. 특히 형벌 법규와 관련해서는<br> 가벌성의 범위가 줄어들거나 늘어나는 것을 가리킬 경우가<br> 있는가 하면, 법규의 적용 범위가
+                    좁아지거나 넓어지는 것을<br> 지칭할 경우도 있다. 혹은 법문의 의미와 관련하여 언어적으<br> 로 매우 엄격하게 새기는 것을 축소로 보는가 하면, 명시되지<br> 않는 요건을 덧붙이게 되는 탓에 확장이라 일컫기도 한다. 한<br> 편 이른바 법의 실질적 의미에 비추어 시민적 자유와 권리에<br> 제약을 가하거나 법적인 원칙에 예외를 두는 것을 축소로 표<br> 현하기도 하며, 학설에 따라서는 입법자의 의사나
+                    법 그 자체<br> 의 목적과 비교함으로써 축소와 확장을 판정하기도 한다.<br> 가령 법은 단순히 '자수를 하면 형을 면제한다'라고만 정하<br> 고 있는데, 이를 '범행이 발각된 후에 수사기관에 자진 출두<br> 하는 것은 자수에 해당하지 않는다'라고 새기는 경우를 생각<br> 해 보자. 그러한 해석적 시도는 가벌성을 넓힌다는 점에서는<br> 확장이지만, 법규의 적용 범위를 좁힌다는 점에서는 축소에<br> 해당한다. 한편 자수의 일차적이고도 엄격한 의미는 '범행 발<br> 각 전'의 그것만을 뜻한다고 할 수 있다면, 그와 같은 측면에<br> 서는 법문의 의미를 축소하는 것이지만, 형의 면제 요건으로<br> 단순히 자수 이외에 '범행 발각 전'이라고 하는 명시되지 않은<br> 요소를 추가하여 법문의 의미를 파악하고 있는 점에서는 확<br> 장이다. 나아가 형의 면제 기회가 줄어드는 만큼 시민적 자유<br> 의 제약을
+                    초래한다는 점에서는 축소이지만, 자수를 통한 형<br> 의 면제가 어디까지나 자신의 행위 결과에 대하여 책임을 져<br> 야 한다는 대원칙의 예외에 불과하다면, 그와 같은 예외의 폭<br> 을 줄이고 원칙으로 수렴한다는 점에서는 확장이라 말할 수<br> 있다.
+                    <br> 이렇듯 법의 해석과 적용을 인도하는 주요 개념들, 즉 법문<br> 의 가능한 의미 범위 및 그 안팎에서 시도되는 법의 축소와<br> 확장은 대체로 정체가 불분명할 뿐 아니라 그 존재론적 기초<br> 를 의심받기도 하지만, 여전히 많은 학설과 판례가 이들의 도<br> 구적 가치를 긍정하고 있다. 그것은 규범적 정당성과 실천적<br> 유용성을 함께 추구하는 법의 논리가 법적 사고의 과정 자체<br> 에 남긴
+                    유산인 것이다.<br>
+                </div>
+            </div>
+            <div class="right">
+                <div class="content">
+
+                    <!-- 서술형 1: 내용 요약 -->
+                    <div class="essay-block question" data-question="6-essay">
+                        <div class="essay-label">📝 서술형 1</div>
+                        <div class="essay-q">이 지문을 읽고 내용을 요약하시오. (5줄 이내)</div>
+                        <textarea rows="5" placeholder="답을 작성하세요" data-essay="6"></textarea>
+                    </div>
+
+                    <div class="essay-block question" data-question="2-sent">
+                        <div class="essay-label">✏️ 서술형 2 — 중요 문장 쓰기</div>
+                        <div class="essay-q">중요하다고 생각되는 주요문장을 지문에서 찾아 쓰시오. (최소 2개)</div>
+                        <textarea rows="5" placeholder="주요문장을 쓰시오" data-essay="2-sent"></textarea>
+                    </div>
+
+                    <!-- 서술형 3: 핵심 단어 -->
+                    <div class="essay-block question" data-question="2-word">
+                        <div class="essay-label">🔑 서술형 3 — 핵심 단어 설명</div>
+                        <div class="essay-q">중요하다고 생각되는 단어를 쓰시오.(최소 4개)</div>
+                        <textarea rows="6" placeholder="주요단어를 쓰시오" data-essay="2-word"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 -->
+        <div class="controls">
+            <button id="prevBtn" onclick="prevPage()">⬅ 이전</button>
+            <span id="pageIndicator">(1/6)</span>
+            <span id="timerDisplay">⏱ 0분 0초</span>
+            <input type="color" id="colorPicker" value="#ffff00">
+            <button id="nextBtn" onclick="nextPage()">다음 ➡</button>
+            <button id="submitBtn" onclick="submitResults()">📤 결과 제출</button>
+        </div>
+    </div>
+
+    <!-- 페이지 넘김 경고 모달 -->
+    <div id="warnModal">
+        <div id="warnBox">
+            <div class="warn-icon">⚠️</div>
+            <h2>페이지를 넘기면 돌아올 수 없습니다!</h2>
+            <p>이전 페이지로 <strong>절대 돌아갈 수 없습니다.</strong><br>
+            답안을 다시 확인하셨나요?<br>
+            계속 진행하시겠습니까?</p>
+            <div class="warn-btns">
+                <button id="warnCancel">✏️ 다시 확인</button>
+                <button id="warnConfirm">➡ 넘어가기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1508298857459744956/s9jVb83LQ7zp6ZgIHmwnbfINNiIxZz9Aha9xNU1y_gCYZ7owC-ZWnWGChnG9yDKb5g25";
+
+        let current = 0;
+        const pages = document.querySelectorAll(".page");
+        const indicator = document.getElementById("pageIndicator");
+        const timerDisplay = document.getElementById("timerDisplay");
+
+        // ── 페이지별 체류 시간 추적 ──────────────────────────
+        const PAGE_COUNT = pages.length;
+        // 각 페이지에서 보낸 누적 초(초 단위)
+        const pageTimes = new Array(PAGE_COUNT).fill(0);
+        // 현재 페이지에 들어온 시각 (ms)
+        let pageEnteredAt = Date.now();
+        // 현재 페이지 타이머 카운트 (1초마다 갱신)
+        let timerInterval = null;
+
+        function fmtSeconds(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m}분 ${s}초`;
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            pageEnteredAt = Date.now();
+
+            timerInterval = setInterval(() => {
+                // 현재 페이지에서 방금까지 쌓인 초
+                const elapsed = Math.floor((Date.now() - pageEnteredAt) / 1000);
+                const total = pageTimes[current] + elapsed;
+                timerDisplay.textContent = `⏱ ${fmtSeconds(total)}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            // 현재 페이지 체류 시간 누적 저장
+            const elapsed = Math.floor((Date.now() - pageEnteredAt) / 1000);
+            pageTimes[current] += elapsed;
+        }
+
+        // ── 페이지 순서 ───────────────────────────────────────
+        pages.forEach((page, index) => {
+            page.style.zIndex = pages.length - index;
+        });
+
+        // 각 페이지(인덱스)에 속한 문제 data-question 목록
+        const pageQuestions = {
+            0: ['1-1', '1-2', '1-3'],
+            1: ['2-essay', '2-sent', '2-word'],   // 2페이지: 서술형 3개
+            2: ['3-1', '3-2', '3-3'],
+            3: ['4-essay', '4-sent', '4-word'],   // 4페이지: 서술형 3개
+            4: ['5-1', '5-2', '5-3'],
+            5: ['6-essay', '6-sent', '6-word']    // 6페이지: 서술형 3개
+        };
+
+        // data-essay 값과 data-question 매핑 (서술형 검사용)
+        const essayMap = {
+            '2-essay': '2',
+            '2-sent':  '2-sent',
+            '2-word':  '2-word',
+            '4-essay': '4',
+            '4-sent':  '4-sent',
+            '4-word':  '4-word',
+            '6-essay': '6',
+            '6-sent':  '6-sent',
+            '6-word':  '6-word'
+        };
+
+        // 현재 페이지의 미완성 문제 수 반환 (0이면 모두 완료)
+        function countUnanswered(pageIdx) {
+            let count = 0;
+            (pageQuestions[pageIdx] || []).forEach(qId => {
+                const q = document.querySelector(`.question[data-question="${qId}"]`);
+                if (!q) return;
+                // 객관식
+                const hasOption = q.querySelector('.option');
+                if (hasOption) {
+                    if (!q.querySelector('.option.selected')) count++;
+                    return;
+                }
+                // 서술형: data-essay 속성을 가진 textarea 검사
+                const essayKey = essayMap[qId];
+                if (essayKey) {
+                    const ta = q.querySelector(`textarea[data-essay="${essayKey}"]`);
+                    if (ta && ta.value.trim() === '') count++;
+                }
+            });
+            return count;
+        }
+
+        function showPages() {
+            pages.forEach((page, index) => {
+                if (index < current) {
+                    page.classList.add("flipped");
+                } else {
+                    page.classList.remove("flipped");
+                }
+            });
+            indicator.textContent = `(${current + 1}/${pages.length})`;
+            // 이전 버튼은 항상 비활성화
+            document.getElementById('prevBtn').style.pointerEvents = 'none';
+            document.getElementById('prevBtn').style.opacity = '0.35';
+        }
+
+        // 모달 확인 후 실행할 콜백
+        let pendingConfirm = null;
+
+        function showWarnModal(onConfirm) {
+            pendingConfirm = onConfirm;
+            document.getElementById('warnModal').classList.add('show');
+        }
+
+        document.getElementById('warnCancel').addEventListener('click', () => {
+            document.getElementById('warnModal').classList.remove('show');
+            pendingConfirm = null;
+        });
+
+        document.getElementById('warnConfirm').addEventListener('click', () => {
+            document.getElementById('warnModal').classList.remove('show');
+            if (pendingConfirm) { pendingConfirm(); pendingConfirm = null; }
+        });
+
+        function doNextPage() {
+            stopTimer();
+            current++;
+            showPages();
+            startTimer();
+        }
+
+        function nextPage() {
+            if (current >= pages.length - 1) return;
+
+            const missing = countUnanswered(current);
+            if (missing > 0) {
+                alert(`⚠️ 아직 답하지 않은 문제가 ${missing}개 있습니다.\n모든 문제를 풀어야 다음 페이지로 넘어갈 수 있습니다.`);
+                return;
+            }
+
+            showWarnModal(doNextPage);
+        }
+
+        function prevPage() {
+            // 이전 페이지로 돌아가는 것은 완전 차단
+            alert('⛔ 이전 페이지로 돌아갈 수 없습니다.');
+        }
+
+        showPages();
+        startTimer(); // 첫 페이지 타이머 시작
+
+        // ── 객관식 선택 처리 ──────────────────────────────────
+        document.querySelectorAll(".question").forEach(question => {
+            question.querySelectorAll(".option").forEach(option => {
+                option.addEventListener("click", () => {
+                    question.querySelectorAll(".option").forEach(o => o.classList.remove("selected"));
+                    option.classList.add("selected");
+                });
+            });
+        });
+
+        // ── 형광펜 색상 변경 ──────────────────────────────────
+        document.getElementById("colorPicker").addEventListener("input", (e) => {
+            const color = e.target.value;
+            document.documentElement.style.setProperty("--highlight-color", color);
+            document.documentElement.style.setProperty("--page5-highlight", color);
+        });
+
+        // ── 결과 수집 ─────────────────────────────────────────
+        function collectResults() {
+            const results = { timestamp: new Date().toISOString(), answers: {} };
+
+            document.querySelectorAll('.question[data-question]').forEach(question => {
+                const questionId = question.dataset.question;
+                const selected = question.querySelector('.option.selected');
+                if (selected) {
+                    results.answers[questionId] = {
+                        type: 'multiple_choice',
+                        answer: selected.dataset.answer,
+                        text: selected.textContent.trim()
+                    };
+                }
+            });
+
+            document.querySelectorAll('textarea[data-essay]').forEach(textarea => {
+                const essayId = textarea.dataset.essay;
+                const answer = textarea.value.trim();
+                if (answer) {
+                    results.answers[`essay-${essayId}`] = { type: 'essay', answer };
+                }
+            });
+
+            return results;
+        }
+
+        // ── Discord 제출 ──────────────────────────────────────
+        async function submitResults() {
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+
+            try {
+                submitBtn.textContent = '제출 중...';
+                submitBtn.disabled = true;
+
+                // 현재 페이지 시간도 저장
+                stopTimer();
+                const snapshotTimes = [...pageTimes];
+                startTimer(); // 제출 후에도 계속 측정
+
+                const results = collectResults();
+
+                // ── Embed 구성 ──
+                const embed = {
+                    title: "📚 법률 학습 교재 - 답안 제출",
+                    color: 3447003,
+                    fields: [],
+                    timestamp: new Date().toISOString(),
+                    footer: { text: "자동 제출 시스템" }
+                };
+
+                // 페이지별 체류 시간 필드
+                const timeLines = snapshotTimes.map((sec, i) =>
+                    `**${i + 1}페이지**: ${fmtSeconds(sec)}`
+                ).join('\n');
+                const totalSec = snapshotTimes.reduce((a, b) => a + b, 0);
+
+                embed.fields.push({
+                    name: "⏱ 페이지별 체류 시간",
+                    value: timeLines + `\n\n**총 소요 시간**: ${fmtSeconds(totalSec)}`,
+                    inline: false
+                });
+
+                // 페이지별 답안
+                const pageMap = {
+                    "1페이지 (객관식)": ["1-1", "1-2", "1-3"],
+                    "2페이지 (서술형)": ["essay-2"],
+                    "3페이지 (객관식)": ["3-1", "3-2", "3-3"],
+                    "4페이지 (서술형)": ["essay-4"],
+                    "5페이지 (객관식)": ["5-1", "5-2", "5-3"],
+                    "6페이지 (서술형)": ["essay-6"]
+                };
+
+                for (const [pageName, ids] of Object.entries(pageMap)) {
+                    const lines = ids.map(qId => {
+                        const ans = results.answers[qId];
+                        if (!ans) return `**${qId}**: 미작성`;
+                        if (ans.type === 'multiple_choice') {
+                            return `**문제 ${qId.split('-')[1]}**: ${ans.answer}번\n*${ans.text}*`;
+                        }
+                        const txt = ans.answer.length > 200
+                            ? ans.answer.substring(0, 200) + '...'
+                            : ans.answer;
+                        return `**서술형 답변**:\n${txt}`;
+                    });
+                    embed.fields.push({ name: pageName, value: lines.join('\n\n') || '답변 없음', inline: false });
+                }
+
+                // 통계
+                const total = Object.keys(results.answers).length;
+                const mc = Object.values(results.answers).filter(a => a.type === 'multiple_choice').length;
+                const es = Object.values(results.answers).filter(a => a.type === 'essay').length;
+                embed.fields.push({
+                    name: "📊 제출 통계",
+                    value: `총 답변 수: ${total}개\n객관식: ${mc}개\n서술형: ${es}개`,
+                    inline: false
+                });
+
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ embeds: [embed] })
+                });
+
+                if (response.ok) {
+                    submitBtn.textContent = '✅ 제출 완료!';
+                    setTimeout(() => {
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    }, 3000);
+                    alert('답안이 성공적으로 제출되었습니다!');
+                } else {
+                    throw new Error('제출 실패');
+                }
+
+            } catch (error) {
+                console.error('제출 오류:', error);
+                submitBtn.textContent = '❌ 제출 실패';
+                submitBtn.style.background = 'rgba(200, 100, 100, 0.9)';
+                setTimeout(() => {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    submitBtn.style.background = 'rgba(100, 200, 100, 0.9)';
+                }, 3000);
+                alert('제출 중 오류가 발생했습니다. 다시 시도해주세요.');
+            }
+        }
+    </script>
+
+</body>
+</html>
